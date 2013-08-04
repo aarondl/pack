@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	intBase     = 10
-	intSize     = 32
-	errMsgEmpty = `pack: Version string must not be empty.`
-	errFmtMatch = `pack: [%v] must be in the form (~|>|<|!)=major.minor.patch`
+	intBase       = 10
+	intSize       = 32
+	errMsgEmpty   = `pack: String must not be empty.`
+	errFmtVersion = `pack: [%v] must be in the form (~|>|<|!)=major.minor.patch`
 )
 
 var (
@@ -57,8 +57,8 @@ type Version struct {
 	Patch uint
 }
 
-// Parse a string into a version struct.
-func Parse(str string) (version Version, err error) {
+// ParseVersion parses a string into a version.
+func ParseVersion(str string) (version Version, err error) {
 	if len(str) == 0 {
 		err = errors.New(errMsgEmpty)
 		return
@@ -66,7 +66,7 @@ func Parse(str string) (version Version, err error) {
 	parts := rgxVersion.FindStringSubmatch(str)
 
 	if parts == nil {
-		err = fmt.Errorf(errFmtMatch, str)
+		err = fmt.Errorf(errFmtVersion, str)
 		return
 	}
 
@@ -110,40 +110,40 @@ func Parse(str string) (version Version, err error) {
 // Checks that the base version (lhs) satisfies the condition version on the rhs
 // Example: 2.0.0 is the base version, and <=2.1.3 is the condition version
 // will return true.
-func (b Version) Compare(c Version) bool {
+func (b *Version) Compare(c Version) (ok bool) {
 	switch c.Operator {
 	case Equal:
-		return b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch
+		ok = b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch
 	case NotEqual:
-		return b.Major != c.Major || b.Minor != c.Minor || b.Patch != c.Patch
+		ok = b.Major != c.Major || b.Minor != c.Minor || b.Patch != c.Patch
 	case GreaterThan:
-		return b.Major > c.Major ||
+		ok = b.Major > c.Major ||
 			b.Major == c.Major && b.Minor > c.Minor ||
 			b.Major == c.Major && b.Minor == c.Minor && b.Patch > c.Patch
 	case LessThan:
-		return b.Major < c.Major ||
+		ok = b.Major < c.Major ||
 			b.Major == c.Major && b.Minor < c.Minor ||
 			b.Major == c.Major && b.Minor == c.Minor && b.Patch < c.Patch
 	case GreaterEqual:
-		return b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch ||
+		ok = b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch ||
 			b.Major > c.Major ||
 			b.Major == c.Major && b.Minor > c.Minor ||
 			b.Major == c.Major && b.Minor == c.Minor && b.Patch > c.Patch
 	case LessEqual:
-		return b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch ||
+		ok = b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch ||
 			b.Major < c.Major ||
 			b.Major == c.Major && b.Minor < c.Minor ||
 			b.Major == c.Major && b.Minor == c.Minor && b.Patch < c.Patch
 	case ApproxGreater:
-		return b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch ||
+		ok = b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch ||
 			b.Major == c.Major && b.Minor > c.Minor ||
 			b.Major == c.Major && b.Minor == c.Minor && b.Patch > c.Patch
 	}
-	return false
+	return
 }
 
 // String changes the version into a string representation.
-func (v Version) String() string {
+func (v *Version) String() string {
 	var sym string
 	switch v.Operator {
 	case NotEqual:
@@ -172,7 +172,7 @@ func (v *Version) SetYAML(_ string, value interface{}) (ok bool) {
 	var s string
 	var err error
 	if s, ok = value.(string); ok {
-		*v, err = Parse(s)
+		*v, err = ParseVersion(s)
 		ok = err == nil
 	}
 	return

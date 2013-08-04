@@ -30,13 +30,14 @@ func TestParse(t *T) {
 	}
 
 	for _, test := range tests {
-		out, err := Parse(test.Input)
+		out, err := ParseVersion(test.Input)
 		if err != nil {
 			if len(test.Error) == 0 {
 				t.Error(test)
 				t.Error(test, "had unexpected error:", err)
 			} else if !strings.Contains(err.Error(), test.Error) {
-				t.Error(test, "expected error message like:", test.Error, "got:", err)
+				t.Error(test, "expected error message like:",
+					test.Error, "got:", err)
 			}
 		}
 
@@ -123,7 +124,7 @@ func TestCompare(t *T) {
 	}
 }
 
-func TestString(t *T) {
+func TestVersion_String(t *T) {
 	t.Parallel()
 	var tests = []struct {
 		Version  Version
