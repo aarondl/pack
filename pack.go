@@ -7,6 +7,9 @@ package pack
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"launchpad.net/goyaml"
 	"regexp"
 )
 
@@ -15,9 +18,30 @@ const (
 )
 
 var (
-	rgxDependency = regexp.MustCompile(
+	errPartialWrite = errors.New(`pack: Partial write on pack serialization.`)
+	rgxDependency   = regexp.MustCompile(
 		`(?i)^([a-z][a-z0-9_\-]+)( [a-z0-9<>=!~\.]+)?$`)
 )
+
+// Author is metadata about an author.
+type Author struct {
+	Name     string
+	Email    string
+	Homepage string
+}
+
+// Repository is a repository.
+type Repository struct {
+	// Type can be one of: git/mercurial/bazaar
+	Type string
+	Url  string
+}
+
+// Dependency is a package dependency.
+type Dependency struct {
+	Name    string
+	Version *Version
+}
 
 // Pack is the metadata of a package.
 type Pack struct {
@@ -49,24 +73,40 @@ type Pack struct {
 	Subpackages []string
 }
 
-// Author is metadata about an author.
-type Author struct {
-	Name     string
-	Email    string
-	Homepage string
+// ParsePack reads yaml from a reader and parses it into a pack object.
+func ParsePack(reader io.Reader) (*Pack, error) {
+	var p *Pack
+
+	read, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	p = new(Pack)
+	err = goyaml.Unmarshal(read, p)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
 }
 
-// Repository is a repository.
-type Repository struct {
-	// Type can be one of: git/mercurial/bazaar
-	Type string
-	Url  string
-}
+// WriteTo writes the pack object to the passed in writer.
+func (p *Pack) WriteTo(writer io.Writer) error {
+	written, err := goyaml.Marshal(p)
+	if err != nil {
+		return err
+	}
 
-// Dependency is a package dependency.
-type Dependency struct {
-	Name    string
-	Version *Version
+	n, err := writer.Write(written)
+	if err != nil {
+		return err
+	}
+	if n != len(written) {
+		return errPartialWrite
+	}
+
+	return nil
 }
 
 // ParseDependency parses a string into a Dependency.
