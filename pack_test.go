@@ -116,7 +116,8 @@ func TestParseDependency(t *T) {
 		Error  string
 	}{
 		{``, Dependency{}, `empty`},
-		{`name <3.2.5`, Dependency{`name`, &Version{LessThan, 3, 2, 5}}, ``},
+		{`name <3.2.5`, Dependency{`name`,
+			&Version{LessThan, 3, 2, 5, ``}}, ``},
 		{`1234 a.2.5`, Dependency{}, `name`},
 		{`name1234 a.2`, Dependency{}, `form`},
 	}
@@ -151,9 +152,9 @@ func TestDependency_String(t *T) {
 		Expected   string
 	}{
 		{Dependency{}, ""},
-		{Dependency{"", &Version{0, 1, 2, 3}}, ""},
+		{Dependency{"", &Version{0, 1, 2, 3, ``}}, ""},
 		{Dependency{"name", nil}, "name"},
-		{Dependency{"name", &Version{GreaterThan, 1, 2, 3}}, "name >1.2.3"},
+		{Dependency{"name", &Version{GreaterThan, 1, 2, 3, ``}}, "name >1.2.3"},
 	}
 
 	for _, test := range tests {
@@ -165,7 +166,7 @@ func TestDependency_String(t *T) {
 
 func TestDependency_GetYAML(t *T) {
 	t.Parallel()
-	d := Dependency{"name", &Version{NotEqual, 1, 2, 3}}
+	d := Dependency{"name", &Version{NotEqual, 1, 2, 3, ``}}
 	_, value := d.GetYAML()
 	if s, ok := value.(string); !ok {
 		t.Error("It should return a string type.")
@@ -190,7 +191,7 @@ func TestDependency_SetYAML(t *T) {
 	if d.Name != "name" {
 		t.Error("Expected:", d.Name, "to equal: name")
 	}
-	comp := Version{Equal, 1, 2, 3}
+	comp := Version{Equal, 1, 2, 3, ``}
 	if !d.Version.Compare(comp) {
 		t.Error("Expected:", d.Version, "to match", comp)
 	}
