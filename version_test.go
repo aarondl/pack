@@ -146,7 +146,7 @@ func TestVersion_String(t *T) {
 	}
 }
 
-func TestGetYAML(t *T) {
+func TestVersion_GetYAML(t *T) {
 	t.Parallel()
 	v := Version{NotEqual, 1, 2, 3}
 	_, value := v.GetYAML()
@@ -157,7 +157,7 @@ func TestGetYAML(t *T) {
 	}
 }
 
-func TestSetYAML(t *T) {
+func TestVersion_SetYAML(t *T) {
 	t.Parallel()
 	var v Version
 	if v.SetYAML("", "fail") {
