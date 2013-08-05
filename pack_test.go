@@ -30,7 +30,7 @@ contributors:
   homepage: github.com/contrib
 dependencies:
 - dep >1.2.3
-- dep2 ~>1.4.5
+- dep2 ~>1.4.5-pre !=1.5.0
 subpackages:
 - subpackage
 `
@@ -117,7 +117,12 @@ func TestParseDependency(t *T) {
 	}{
 		{``, Dependency{}, `empty`},
 		{`name <3.2.5`, Dependency{`name`,
-			&Version{LessThan, 3, 2, 5, ``}}, ``},
+			[]*Version{&Version{LessThan, 3, 2, 5, ``}}}, ``},
+		{`name <3.2.5 !=1.5.0`, Dependency{`name`,
+			[]*Version{
+				&Version{LessThan, 3, 2, 5, ``},
+				&Version{LessThan, 3, 2, 5, ``},
+			}}, ``},
 		{`1234 a.2.5`, Dependency{}, `name`},
 		{`name1234 a.2`, Dependency{}, `form`},
 	}
@@ -138,9 +143,8 @@ func TestParseDependency(t *T) {
 		if out.Name != test.Output.Name {
 			t.Error("Expected:", out.Name, "to be equal to:", test.Output.Name)
 		}
-		if out.Version != nil && *out.Version != *test.Output.Version {
-			t.Error("Expected:", *out.Version, "to be equal to:",
-				*test.Output.Version)
+		if n, e := len(out.Versions), len(test.Output.Versions); n != e {
+			t.Error("Expected:", e, "elements, got:", n)
 		}
 	}
 }
@@ -152,9 +156,14 @@ func TestDependency_String(t *T) {
 		Expected   string
 	}{
 		{Dependency{}, ""},
-		{Dependency{"", &Version{0, 1, 2, 3, ``}}, ""},
+		{Dependency{"", []*Version{&Version{0, 1, 2, 3, ``}}}, ""},
 		{Dependency{"name", nil}, "name"},
-		{Dependency{"name", &Version{GreaterThan, 1, 2, 3, ``}}, "name >1.2.3"},
+		{Dependency{"name", []*Version{&Version{GreaterThan, 1, 2, 3, ``}}},
+			"name >1.2.3"},
+		{Dependency{"name", []*Version{
+			{GreaterThan, 1, 2, 3, ``},
+			{NotEqual, 1, 5, 0, `pre`},
+		}}, "name >1.2.3 !=1.5.0-pre"},
 	}
 
 	for _, test := range tests {
@@ -166,7 +175,7 @@ func TestDependency_String(t *T) {
 
 func TestDependency_GetYAML(t *T) {
 	t.Parallel()
-	d := Dependency{"name", &Version{NotEqual, 1, 2, 3, ``}}
+	d := Dependency{"name", []*Version{&Version{NotEqual, 1, 2, 3, ``}}}
 	_, value := d.GetYAML()
 	if s, ok := value.(string); !ok {
 		t.Error("It should return a string type.")
@@ -192,7 +201,9 @@ func TestDependency_SetYAML(t *T) {
 		t.Error("Expected:", d.Name, "to equal: name")
 	}
 	comp := Version{Equal, 1, 2, 3, ``}
-	if !d.Version.Compare(comp) {
-		t.Error("Expected:", d.Version, "to match", comp)
+	if len(d.Versions) != 1 {
+		t.Error("Expected a constraint.")
+	} else if !d.Versions[0].Compare(comp) {
+		t.Error("Expected:", d.Versions[0], "to match", comp)
 	}
 }

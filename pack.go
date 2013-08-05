@@ -5,12 +5,14 @@ to facilitate the reading, writing, and comparison of package metadata.
 package pack
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"launchpad.net/goyaml"
 	"regexp"
+	"strings"
 )
 
 const (
@@ -20,7 +22,7 @@ const (
 var (
 	errPartialWrite = errors.New(`pack: Partial write on pack serialization.`)
 	rgxDependency   = regexp.MustCompile(
-		`(?i)^([a-z][a-z0-9_\-]+)( [a-z0-9<>=!~\.]+)?$`)
+		`(?i)^([a-z][a-z0-9_\-]+)((:? [a-z0-9<>=!~\.-]+)+)?$`)
 )
 
 // Author is metadata about an author.
@@ -39,8 +41,8 @@ type Repository struct {
 
 // Dependency is a package dependency.
 type Dependency struct {
-	Name    string
-	Version *Version
+	Name     string
+	Versions []*Version
 }
 
 // Pack is the metadata of a package.
@@ -124,22 +126,36 @@ func ParseDependency(str string) (dep Dependency, err error) {
 
 	dep.Name = parts[1]
 	if len(parts[2]) > 0 {
-		var v Version
-		v, err = ParseVersion(parts[2][1:])
-		if err != nil {
-			return
+		splits := strings.Split(parts[2], " ")[1:]
+		ln := len(splits)
+
+		dep.Versions = make([]*Version, ln)
+		for i := 0; i < ln; i++ {
+			dep.Versions[i] = new(Version)
+			*dep.Versions[i], err = ParseVersion(splits[i])
+			if err != nil {
+				return
+			}
 		}
-		dep.Version = &v
 	}
 	return
 }
 
 // String turns a Dependency into a String.
 func (d *Dependency) String() (str string) {
-	str = d.Name
-	if len(str) > 0 && d.Version != nil {
-		str += " " + d.Version.String()
+	var buf bytes.Buffer
+	if len(d.Name) == 0 {
+		return
 	}
+
+	buf.WriteString(d.Name)
+	if d.Versions != nil {
+		for i := 0; i < len(d.Versions); i++ {
+			buf.WriteByte(' ')
+			buf.WriteString(d.Versions[i].String())
+		}
+	}
+	str = buf.String()
 	return
 }
 
