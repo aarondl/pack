@@ -28,9 +28,15 @@ contributors:
 - name: Contrib1
   email: contrib@email.com
   homepage: github.com/contrib
+support:
+  website: support.com
+  email: email@support.com
+  forum: forum.com
+  wiki: wiki.com
+  issues: github.com/issues
 dependencies:
 - dep >1.2.3
-- dep2 ~>1.4.5-pre !=1.5.0
+- dep2 ~1.4.5-pre !=1.5.0
 subpackages:
 - subpackage
 `

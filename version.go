@@ -18,12 +18,12 @@ const (
 
 var (
 	// rgxVersion ensures:
-	// 1. A proper comparison operator: =, !=, >, <, >=, <=, ~>
+	// 1. A proper comparison operator: =, !=, >, <, >=, <=, ~
 	// 2. Major, minor, patch versions exist and are numeric with no leading 0s
 	// 3. Release is preceeded by a dash
 	// 4. Release's tokens are sepearated by .
 	// 5. Release's tokens must be: numeric or alphanumeric starting with alpha.
-	rgxVersion = regexp.MustCompile(`(?i)^(=|!=|>|<|>=|<=|~>)?` +
+	rgxVersion = regexp.MustCompile(`(?i)^(=|!=|>|<|>=|<=|~)?` +
 		`(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)` +
 		`(?:-((?:[a-z][a-z0-9]*|[1-9][0-9]*)` +
 		`(?:\.(?:[a-z][a-z0-9]*|[1-9][0-9]*))*))?$`)
@@ -46,7 +46,7 @@ const (
 	GreaterEqual
 	// LessEqual is the <= operator.
 	LessEqual
-	// ApproxGreater is the ~> operator.
+	// ApproxGreater is the ~ operator.
 	// This operator means "greater than or equal to so long as the major
 	// version is not incremented".
 	ApproxGreater
@@ -93,7 +93,7 @@ func ParseVersion(str string) (version Version, err error) {
 		version.Operator = GreaterEqual
 	case `<=`:
 		version.Operator = LessEqual
-	case `~>`:
+	case `~`:
 		version.Operator = ApproxGreater
 	}
 
@@ -248,7 +248,7 @@ func (v Version) String() string {
 	case LessEqual:
 		sym = `<=`
 	case ApproxGreater:
-		sym = `~>`
+		sym = `~`
 	}
 	if len(v.Release) > 0 {
 		release = "-" + v.Release

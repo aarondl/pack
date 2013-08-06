@@ -35,14 +35,14 @@ func TestParse(t *T) {
 		{`<4.2.1`, Version{LessThan, 4, 2, 1, ``}, ``},
 		{`>=4.2.1`, Version{GreaterEqual, 4, 2, 1, ``}, ``},
 		{`<=4.2.1`, Version{LessEqual, 4, 2, 1, ``}, ``},
-		{`~>4.2.1`, Version{ApproxGreater, 4, 2, 1, ``}, ``},
+		{`~4.2.1`, Version{ApproxGreater, 4, 2, 1, ``}, ``},
 
 		// Release
-		{`~>4.2.1-.pre`, Version{}, `form`},
-		{`~>4.2.1-`, Version{}, `form`},
-		{`~>4.2.1-=`, Version{}, `form`},
-		{`~>4.2.1-1pre`, Version{}, `form`},
-		{`~>4.2.1-01`, Version{}, `form`},
+		{`~4.2.1-.pre`, Version{}, `form`},
+		{`~4.2.1-`, Version{}, `form`},
+		{`~4.2.1-=`, Version{}, `form`},
+		{`~4.2.1-1pre`, Version{}, `form`},
+		{`~4.2.1-01`, Version{}, `form`},
 		{`>=4.2.1-pre`, Version{GreaterEqual, 4, 2, 1, `pre`}, ``},
 		{`<=4.2.1-pre1`, Version{LessEqual, 4, 2, 1, `pre1`}, ``},
 		{`<=4.2.1-pre.1`, Version{LessEqual, 4, 2, 1, `pre.1`}, ``},
@@ -152,22 +152,22 @@ func TestCompare(t *T) {
 		{"1.0.0-a", "<=2.0.0", true},
 		{"2.0.0", "<=1.0.0-a", false},
 
-		// ~>
-		{"1.0.1", "~>1.0.0", true},
-		{"1.1.0", "~>1.0.0", true},
-		{"2.0.0", "~>1.0.0", false},
-		{"1.0.0", "~>1.0.0", true},
-		{"1.0.0", "~>1.0.1", false},
-		{"1.0.0", "~>1.1.0", false},
-		{"1.0.0", "~>2.0.0", false},
-		{"1.0.0-a", "~>1.0.0-a", true},
-		{"1.0.0-a", "~>1.0.1-a", false},
-		{"1.0.0-a", "~>1.0.0", false},
-		{"1.0.0", "~>1.0.0-a", true},
-		{"1.0.0-a", "~>2.0.0", false},
-		{"2.0.0", "~>1.0.0-a", false},
-		{"1.0.0-a", "~>2.0.0-a", false},
-		{"2.0.0-a", "~>1.0.0-a", false},
+		// ~
+		{"1.0.1", "~1.0.0", true},
+		{"1.1.0", "~1.0.0", true},
+		{"2.0.0", "~1.0.0", false},
+		{"1.0.0", "~1.0.0", true},
+		{"1.0.0", "~1.0.1", false},
+		{"1.0.0", "~1.1.0", false},
+		{"1.0.0", "~2.0.0", false},
+		{"1.0.0-a", "~1.0.0-a", true},
+		{"1.0.0-a", "~1.0.1-a", false},
+		{"1.0.0-a", "~1.0.0", false},
+		{"1.0.0", "~1.0.0-a", true},
+		{"1.0.0-a", "~2.0.0", false},
+		{"2.0.0", "~1.0.0-a", false},
+		{"1.0.0-a", "~2.0.0-a", false},
+		{"2.0.0-a", "~1.0.0-a", false},
 	}
 
 	for _, test := range tests {
@@ -259,8 +259,8 @@ func TestVersion_String(t *T) {
 		{Version{LessThan, 1, 2, 3, ``}, `<1.2.3`},
 		{Version{GreaterEqual, 1, 2, 3, ``}, `>=1.2.3`},
 		{Version{LessEqual, 1, 2, 3, ``}, `<=1.2.3`},
-		{Version{ApproxGreater, 1, 2, 3, ``}, `~>1.2.3`},
-		{Version{ApproxGreater, 1, 2, 3, `1.3.patch`}, `~>1.2.3-1.3.patch`},
+		{Version{ApproxGreater, 1, 2, 3, ``}, `~1.2.3`},
+		{Version{ApproxGreater, 1, 2, 3, `1.3.patch`}, `~1.2.3-1.3.patch`},
 	}
 
 	for _, test := range tests {

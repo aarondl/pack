@@ -32,6 +32,15 @@ type Author struct {
 	Homepage string
 }
 
+// Support contains the locations at which to find support for the package.
+type Support struct {
+	Website string
+	Email   string
+	Forum   string
+	Wiki    string
+	Issues  string
+}
+
 // Repository is a repository.
 type Repository struct {
 	// Type can be one of: git/mercurial/bazaar
@@ -67,6 +76,8 @@ type Pack struct {
 	Authors []*Author
 	// Contributors
 	Contributors []*Author
+	// Support
+	Support Support
 	// Dependencies of the package.
 	Dependencies []*Dependency
 	// Subpackages are used to mark packages that should be tagged with this
