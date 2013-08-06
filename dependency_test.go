@@ -100,7 +100,7 @@ func TestDependency_SetYAML(t *T) {
 	comp := Version{Equal, 1, 2, 3, ``}
 	if len(d.Versions) != 1 {
 		t.Error("Expected a constraint.")
-	} else if !d.Versions[0].Compare(comp) {
+	} else if !d.Versions[0].Satisfies(comp) {
 		t.Error("Expected:", d.Versions[0], "to match", comp)
 	}
 }

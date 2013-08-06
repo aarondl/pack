@@ -121,10 +121,11 @@ func ParseVersion(str string) (version Version, err error) {
 	return
 }
 
-// Checks that the base version (lhs) satisfies the condition version on the rhs
+// Satisfies checks that the base version (lhs) satisfies the condition version
+// (rhs).
 // Example: 2.0.0 is the base version, and <=2.1.3 is the condition version
 // will return true. Comparison is according to http://semver.org/
-func (b *Version) Compare(c Version) (ok bool) {
+func (b *Version) Satisfies(c Version) (ok bool) {
 	switch c.Operator {
 	case Equal:
 		ok = b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch &&

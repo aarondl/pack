@@ -67,7 +67,7 @@ func TestParse(t *T) {
 	}
 }
 
-func TestCompare(t *T) {
+func TestSatisfies(t *T) {
 	t.Parallel()
 	var tests = []struct {
 		Base      string
@@ -180,7 +180,7 @@ func TestCompare(t *T) {
 			t.Error("Error parsing base version:", err)
 		}
 
-		res := base.Compare(cond)
+		res := base.Satisfies(cond)
 
 		if res != test.Result {
 			t.Errorf("%v %v || expected: %v got: %v", test.Base, test.Condition,
@@ -295,7 +295,7 @@ func TestVersion_SetYAML(t *T) {
 		t.Error("Expecting success.")
 	}
 	comp := Version{Equal, 1, 2, 3, `pre`}
-	if !v.Compare(comp) {
+	if !v.Satisfies(comp) {
 		t.Error("Expected:", v, "to match", comp)
 	}
 }
