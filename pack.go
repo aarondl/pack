@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	errFmtDep = `pack: [%v] must be in the form: name( versionconstraint)?`
+	errFmtDep = `pack: [%v] must be in the form: name( versionconstraint)*`
 )
 
 var (
