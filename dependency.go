@@ -9,45 +9,70 @@ import (
 )
 
 const (
-	errFmtDep = `pack: [%v] must be in the form: name( versionconstraint)*`
+	errFmtDep = `pack: [%v] invalid name, must start with alphabetic ` +
+		`and can only have the following characters: a-z0-9, -, _`
+	errFmtConstraint = `pack: [%v] constraints must have the form: ` +
+		`(=|!=|>|<|>=|<=|~)version`
 )
 
 var (
-	rgxDependency = regexp.MustCompile(
-		`(?i)^([a-z][a-z0-9_\-]+)((:? [a-z0-9<>=!~\.-]+)+)?$`)
+	rgxDepName    = regexp.MustCompile(`(?i)^([a-z][a-z0-9_\-]+)$`)
+	rgxConstraint = regexp.MustCompile(
+		`(?i)^(=|!=|>|<|>=|<=|~)?([a-z0-9\.-]+)$`)
 )
 
 // Dependency is a package dependency.
 type Dependency struct {
-	Name     string
-	Versions []*Version
+	Name        string
+	Constraints []*Constraint
+}
+
+// Constraint is a constraint on a dependency.
+type Constraint struct {
+	Operator ComparisonOp
+	Version  *Version
 }
 
 // ParseDependency parses a string into a Dependency.
-func ParseDependency(str string) (dep Dependency, err error) {
+func ParseDependency(str string) (dep *Dependency, err error) {
 	if len(str) == 0 {
 		err = errors.New(errMsgEmpty)
 		return
 	}
 
-	parts := rgxDependency.FindStringSubmatch(str)
-	if parts == nil {
+	parts := strings.Split(str, " ")
+	if !rgxDepName.MatchString(parts[0]) {
 		err = fmt.Errorf(errFmtDep, str)
 		return
 	}
 
-	dep.Name = parts[1]
-	if len(parts[2]) > 0 {
-		splits := strings.Split(parts[2], " ")[1:]
-		ln := len(splits)
+	dep = new(Dependency)
+	dep.Name = parts[0]
+	if len(parts) == 1 {
+		return
+	}
 
-		dep.Versions = make([]*Version, ln)
-		for i := 0; i < ln; i++ {
-			dep.Versions[i] = new(Version)
-			*dep.Versions[i], err = ParseVersion(splits[i])
+	parts = parts[1:]
+	n := len(parts)
+	dep.Constraints = make([]*Constraint, n)
+	for i := 0; i < n; i++ {
+		opVersion := rgxConstraint.FindStringSubmatch(parts[i])
+		if opVersion == nil {
+			err = fmt.Errorf(errFmtConstraint, parts[i])
+			return
+		}
+
+		dep.Constraints[i] = new(Constraint)
+		con := dep.Constraints[i]
+		if len(opVersion[1]) > 0 {
+			con.Operator, err = ParseOp(opVersion[1])
 			if err != nil {
 				return
 			}
+		}
+		con.Version, err = ParseVersion(opVersion[2])
+		if err != nil {
+			return
 		}
 	}
 	return
@@ -61,11 +86,10 @@ func (d *Dependency) String() (str string) {
 	}
 
 	buf.WriteString(d.Name)
-	if d.Versions != nil {
-		for i := 0; i < len(d.Versions); i++ {
-			buf.WriteByte(' ')
-			buf.WriteString(d.Versions[i].String())
-		}
+	for _, con := range d.Constraints {
+		buf.WriteByte(' ')
+		buf.WriteString(con.Operator.String())
+		buf.WriteString(con.Version.String())
 	}
 	str = buf.String()
 	return
@@ -77,12 +101,16 @@ func (v *Dependency) GetYAML() (_ string, value interface{}) {
 }
 
 // SetYAML implements the goyaml Setter interface.
-func (v *Dependency) SetYAML(_ string, value interface{}) (ok bool) {
+func (d *Dependency) SetYAML(_ string, value interface{}) (ok bool) {
 	var s string
 	var err error
+	var tmp *Dependency
 	if s, ok = value.(string); ok {
-		*v, err = ParseDependency(s)
-		ok = err == nil
+		tmp, err = ParseDependency(s)
+		if ok = tmp != nil && err == nil; !ok {
+			return
+		}
+		*d = *tmp
 	}
 	return
 }

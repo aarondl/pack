@@ -31,11 +31,11 @@ type Support struct {
 	Issues  string
 }
 
-// Repository is a repository.
+// Repository is a version control repository endpoint.
 type Repository struct {
 	// Type can be one of: git/mercurial/bazaar
 	Type string
-	Url  string
+	URL  string
 }
 
 // Pack is the metadata of a package.

@@ -12,30 +12,29 @@ const (
 	intBase       = 10
 	intSize       = 32
 	errMsgEmpty   = `pack: String must not be empty.`
-	errFmtVersion = `pack: [%v] must be in the form: ` +
-		`(~|>|<|!)=major.minor.patch-release`
+	errFmtVersion = `pack: [%v] must be in the form: major.minor.patch-release`
+	errFmtOp      = `pack: [%v] must be one of: = != > < >= <= ~`
 )
 
 var (
 	// rgxVersion ensures:
-	// 1. A proper comparison operator: =, !=, >, <, >=, <=, ~
-	// 2. Major, minor, patch versions exist and are numeric with no leading 0s
-	// 3. Release is preceeded by a dash
-	// 4. Release's tokens are sepearated by .
-	// 5. Release's tokens must be: numeric or alphanumeric starting with alpha.
-	rgxVersion = regexp.MustCompile(`(?i)^(=|!=|>|<|>=|<=|~)?` +
-		`(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)` +
-		`(?:-((?:[a-z][a-z0-9]*|[1-9][0-9]*)` +
-		`(?:\.(?:[a-z][a-z0-9]*|[1-9][0-9]*))*))?$`)
+	// 1. Major, minor, patch versions exist and are numeric with no leading 0s
+	// 2. Release is preceeded by a dash
+	// 3. Release's tokens are sepearated by .
+	// 4. Release's tokens must be: numeric or alphanumeric starting with alpha.
+	rgxVersion = regexp.MustCompile(
+		`(?i)^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)` +
+			`(?:-((?:[a-z][a-z0-9]*|[1-9][0-9]*)` +
+			`(?:\.(?:[a-z][a-z0-9]*|[1-9][0-9]*))*))?$`)
 )
 
-// A comparison operator type.
+// ComparisonOp represents a boolean operator.
 type ComparisonOp int
 
 // Defines the comparison operator types.
 const (
 	// Equal is the = operator.
-	Equal ComparisonOp = iota
+	Equal ComparisonOp = iota + 1
 	// NotEqual is the != operator.
 	NotEqual
 	// GreaterThan is the > operator.
@@ -57,8 +56,6 @@ const (
 // 2 = Major, 1 = Minor, 0 = Patch, alpha.1 = Release
 // For a more thorough explanation see: http://semver.org/
 type Version struct {
-	// Operator is the operator included in this version.
-	Operator ComparisonOp
 	// Major version of the package.
 	Major uint
 	// Minor version of the package.
@@ -70,7 +67,7 @@ type Version struct {
 }
 
 // ParseVersion parses a string into a version.
-func ParseVersion(str string) (version Version, err error) {
+func ParseVersion(str string) (version *Version, err error) {
 	if len(str) == 0 {
 		err = errors.New(errMsgEmpty)
 		return
@@ -82,42 +79,69 @@ func ParseVersion(str string) (version Version, err error) {
 		return
 	}
 
-	switch parts[1] {
-	case `!=`:
-		version.Operator = NotEqual
-	case `>`:
-		version.Operator = GreaterThan
-	case `<`:
-		version.Operator = LessThan
-	case `>=`:
-		version.Operator = GreaterEqual
-	case `<=`:
-		version.Operator = LessEqual
-	case `~`:
-		version.Operator = ApproxGreater
-	}
-
+	version = new(Version)
 	var n uint64
+	if n, err = strconv.ParseUint(parts[1], intBase, intSize); err != nil {
+		return
+	}
+	version.Major = uint(n)
+
 	if n, err = strconv.ParseUint(parts[2], intBase, intSize); err != nil {
 		return
-	} else {
-		version.Major = uint(n)
 	}
+	version.Minor = uint(n)
 
 	if n, err = strconv.ParseUint(parts[3], intBase, intSize); err != nil {
 		return
-	} else {
-		version.Minor = uint(n)
 	}
+	version.Patch = uint(n)
 
-	if n, err = strconv.ParseUint(parts[4], intBase, intSize); err != nil {
-		return
-	} else {
-		version.Patch = uint(n)
+	version.Release = parts[4]
+
+	return
+}
+
+// ParseOp parses an operation string into a comparison operator type.
+func ParseOp(str string) (op ComparisonOp, err error) {
+	switch str {
+	case `=`:
+		op = Equal
+	case `!=`:
+		op = NotEqual
+	case `>`:
+		op = GreaterThan
+	case `<`:
+		op = LessThan
+	case `>=`:
+		op = GreaterEqual
+	case `<=`:
+		op = LessEqual
+	case `~`:
+		op = ApproxGreater
+	default:
+		err = fmt.Errorf(errFmtOp, str)
 	}
+	return
+}
 
-	version.Release = parts[5]
-
+// String turns a comparison operator back into a string.
+func (op ComparisonOp) String() (str string) {
+	switch op {
+	case Equal:
+		str = `=`
+	case NotEqual:
+		str = `!=`
+	case GreaterThan:
+		str = `>`
+	case LessThan:
+		str = `<`
+	case GreaterEqual:
+		str = `>=`
+	case LessEqual:
+		str = `<=`
+	case ApproxGreater:
+		str = `~`
+	}
 	return
 }
 
@@ -125,8 +149,8 @@ func ParseVersion(str string) (version Version, err error) {
 // (rhs).
 // Example: 2.0.0 is the base version, and <=2.1.3 is the condition version
 // will return true. Comparison is according to http://semver.org/
-func (b *Version) Satisfies(c Version) (ok bool) {
-	switch c.Operator {
+func (b *Version) Satisfies(op ComparisonOp, c *Version) (ok bool) {
+	switch op {
 	case Equal:
 		ok = b.Major == c.Major && b.Minor == c.Minor && b.Patch == c.Patch &&
 			b.Release == c.Release
@@ -235,27 +259,12 @@ func compareStrings(lhs, rhs string) int {
 
 // String changes the version into a string representation.
 func (v Version) String() string {
-	var sym string
 	var release string
-	switch v.Operator {
-	case NotEqual:
-		sym = `!=`
-	case GreaterThan:
-		sym = `>`
-	case LessThan:
-		sym = `<`
-	case GreaterEqual:
-		sym = `>=`
-	case LessEqual:
-		sym = `<=`
-	case ApproxGreater:
-		sym = `~`
-	}
 	if len(v.Release) > 0 {
 		release = "-" + v.Release
 	}
 	return fmt.Sprintf(
-		`%s%d.%d.%d%s`, sym, v.Major, v.Minor, v.Patch, release)
+		`%d.%d.%d%s`, v.Major, v.Minor, v.Patch, release)
 }
 
 // GetYAML implements the goyaml Getter interface.
@@ -267,9 +276,13 @@ func (v *Version) GetYAML() (_ string, value interface{}) {
 func (v *Version) SetYAML(_ string, value interface{}) (ok bool) {
 	var s string
 	var err error
+	var tmp *Version
 	if s, ok = value.(string); ok {
-		*v, err = ParseVersion(s)
-		ok = err == nil
+		tmp, err = ParseVersion(s)
+		if ok = tmp != nil && err == nil; !ok {
+			return
+		}
+		*v = *tmp
 	}
 	return
 }
