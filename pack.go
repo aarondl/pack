@@ -54,7 +54,7 @@ type Pack struct {
 	Homepage string
 	// Repository
 	Repository Repository
-	// License type
+	// License type ie. MIT, LGPL-3.0+, GPL-3.0+, Apache-2.0
 	License string
 	// Authors
 	Authors []*Author
@@ -64,6 +64,8 @@ type Pack struct {
 	Support Support
 	// Dependencies of the package.
 	Dependencies []*Dependency
+	// Environments of the package.
+	Environments map[string][]*Dependency
 	// Subpackages are used to mark packages that should be tagged with this
 	// same metadata. They must be subdirectories. This is useful for
 	// having subpackages within the same vcs repository.

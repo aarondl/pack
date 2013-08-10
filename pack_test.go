@@ -36,6 +36,22 @@ support:
 dependencies:
 - dep >1.2.3
 - dep2 ~1.4.5-pre !=1.5.0
+environments:
+  all:
+  - urldep git:http://git.com
+  - dep >1.2.4
+  - dep2 =3.4.2
+  dev:
+  - dep >1.4.5
+  - dep4 <1.2.4
+  test:
+  - dep >1.4.6
+  - dep4 <1.2.3
+  prod:
+  - dep >1.4.8
+  - dep4 <1.2.3
+  prod.test:
+  - dep5
 subpackages:
 - subpackage
 `
@@ -69,7 +85,7 @@ func TestParsePack(t *T) {
 		t.Error("It should not return nil.")
 	}
 
-	if p.Name != "package" ||
+	if p.Name != "package" || p.Environments == nil ||
 		p.Authors == nil || p.Contributors == nil || p.Version == nil {
 
 		t.Error("Deserializing did not work correctly:", p)
@@ -100,9 +116,18 @@ func TestPack_WriteTo(t *T) {
 	if err != nil {
 		t.Error("Unexpected:", err)
 	}
-	if str := buf.String(); str != testPack {
-		t.Error("Expected:", testPack, "\ngot:", str)
+
+	p, err = ParsePack(buf)
+	if err != nil {
+		t.Error("Unexpected:", err)
 	}
+
+	if p.Name != "package" || p.Environments == nil ||
+		p.Authors == nil || p.Contributors == nil || p.Version == nil {
+
+		t.Error("The second deserialization did not yield the same result:", p)
+	}
+
 	err = p.WriteTo(&badIO{})
 	if err != fakeError {
 		t.Error("Should report write errors, got:", err, "want:", fakeError)
