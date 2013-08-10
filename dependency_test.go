@@ -8,19 +8,12 @@ import (
 func TestParseDependency(t *T) {
 	t.Parallel()
 
-	out, err := ParseDependency(``)
-	if !strings.Contains(err.Error(), `empty`) {
-		t.Error("Expected empty error, got:", err)
+	out, err := ParseDependency(`name`)
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
 	}
-
-	out, err = ParseDependency(`1234 <3.2.5`)
-	if !strings.Contains(err.Error(), `name`) {
-		t.Error("Expected name error, got:", err)
-	}
-
-	out, err = ParseDependency(`name ~=3.2.5`)
-	if !strings.Contains(err.Error(), `constraints must have`) {
-		t.Error("Expected constraints error, got:", err)
+	if out.Name != "name" {
+		t.Error("Expected name but got:", out.Name)
 	}
 
 	out, err = ParseDependency(`name <3.2.5 ~4.2.5`)
@@ -51,6 +44,49 @@ func TestParseDependency(t *T) {
 	if version := out.Constraints[1].Version; !version.Satisfies(Equal, v) {
 		t.Errorf("Expected %v and %v to be equal.", v, version)
 	}
+
+	out, err = ParseDependency(`name git:http://repo.com`)
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	if out.Name != "name" {
+		t.Error("Expected name to be name but got:", out.Name)
+	}
+
+	if out.URL != "git:http://repo.com" {
+		t.Error("Expected the repo url but got: ", out.URL)
+	}
+}
+
+func TestParseDependency_Errors(t *T) {
+	t.Parallel()
+
+	_, err := ParseDependency(``)
+	if !strings.Contains(err.Error(), `empty`) {
+		t.Error("Expected empty error, got:", err)
+	}
+
+	_, err = ParseDependency(`1234 <3.2.5`)
+	if err == nil {
+		t.Error("Expected an error but got nothing.")
+	} else if exp := "name"; !strings.Contains(err.Error(), exp) {
+		t.Error("Expected an error matching:", exp, "but got:", err)
+	}
+
+	_, err = ParseDependency(`name ~=3.2.5`)
+	if err == nil {
+		t.Error("Expected an error but got nothing.")
+	} else if exp := "constraints"; !strings.Contains(err.Error(), exp) {
+		t.Error("Expected an error matching:", exp, "but got:", err)
+	}
+
+	_, err = ParseDependency(`name asdf`)
+	if err == nil {
+		t.Error("Expected an error but got nothing.")
+	} else if exp := "form"; !strings.Contains(err.Error(), exp) {
+		t.Error("Expected an error matching:", exp, "but got:", err)
+	}
 }
 
 func TestDependency_String(t *T) {
@@ -70,16 +106,24 @@ func TestDependency_String(t *T) {
 		t.Error("Expected empty string, got:", s)
 	}
 
+	dep.URL = "hg:hg.io"
+
+	if s := dep.String(); s != `` {
+		t.Error("Expected empty string, got:", s)
+	}
+
 	dep.Name = "name"
 
-	if s, exp := dep.String(), `name <1.2.3-pre ~3.2.1-dev`; s != exp {
+	if s, exp := dep.String(), `name hg:hg.io <1.2.3-pre ~3.2.1-dev`; s != exp {
 		t.Error("Expected:", exp, "got:", s)
 	}
 }
 
 func TestDependency_GetYAML(t *T) {
 	t.Parallel()
-	d := Dependency{"name",
+	d := Dependency{
+		"name",
+		"git:git+https://repo.com/?hi",
 		[]*Constraint{{
 			NotEqual,
 			&Version{1, 2, 3, `pre`},
@@ -88,7 +132,7 @@ func TestDependency_GetYAML(t *T) {
 	_, value := d.GetYAML()
 	if s, ok := value.(string); !ok {
 		t.Error("It should return a string type.")
-	} else if s != "name !=1.2.3-pre" {
+	} else if s != "name git:git+https://repo.com/?hi !=1.2.3-pre" {
 		t.Error("It's not returning the correct string.")
 	}
 }
@@ -102,12 +146,15 @@ func TestDependency_SetYAML(t *T) {
 	if d.SetYAML("", 10) {
 		t.Error("Expecting failure.")
 	}
-	success := d.SetYAML("", "name >=1.2.3-pre")
+	success := d.SetYAML("", "name git:git.com >=1.2.3-pre")
 	if !success {
 		t.Error("Expecting success.")
 	}
 	if d.Name != "name" {
 		t.Error("Expected:", d.Name, "to equal: name")
+	}
+	if exp := "git:git.com"; exp != d.URL {
+		t.Error("Expected:", d.URL, "to equal:", exp)
 	}
 	comp := &Version{1, 2, 3, `pre`}
 	if len(d.Constraints) != 1 {

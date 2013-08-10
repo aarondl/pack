@@ -12,11 +12,13 @@ const (
 	errFmtDep = `pack: [%v] invalid name, must start with alphabetic ` +
 		`and can only have the following characters: a-z0-9, -, _`
 	errFmtConstraint = `pack: [%v] constraints must have the form: ` +
-		`(=|!=|>|<|>=|<=|~)version`
+		`[url] (=|!=|>|<|>=|<=|~)version*`
 )
 
 var (
-	rgxDepName    = regexp.MustCompile(`(?i)^([a-z][a-z0-9_\-]+)$`)
+	rgxDepName = regexp.MustCompile(`(?i)^([a-z][a-z0-9_\-]+)$`)
+	rgxDepUrl  = regexp.MustCompile(
+		`^(git|bzr|hg):([a-z0-9\?\-_@\.:/=%&]+)$`)
 	rgxConstraint = regexp.MustCompile(
 		`(?i)^(=|!=|>|<|>=|<=|~)?([a-z0-9\.-]+)$`)
 )
@@ -24,6 +26,7 @@ var (
 // Dependency is a package dependency.
 type Dependency struct {
 	Name        string
+	URL         string
 	Constraints []*Constraint
 }
 
@@ -53,6 +56,14 @@ func ParseDependency(str string) (dep *Dependency, err error) {
 	}
 
 	parts = parts[1:]
+	if rgxDepUrl.MatchString(parts[0]) {
+		dep.URL = parts[0]
+		parts = parts[1:]
+		if len(parts) == 0 {
+			return
+		}
+	}
+
 	n := len(parts)
 	dep.Constraints = make([]*Constraint, n)
 	for i := 0; i < n; i++ {
@@ -86,6 +97,10 @@ func (d *Dependency) String() (str string) {
 	}
 
 	buf.WriteString(d.Name)
+	if len(d.URL) > 0 {
+		buf.WriteByte(' ')
+		buf.WriteString(d.URL)
+	}
 	for _, con := range d.Constraints {
 		buf.WriteByte(' ')
 		buf.WriteString(con.Operator.String())
