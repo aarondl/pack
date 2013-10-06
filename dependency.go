@@ -80,6 +80,8 @@ func ParseDependency(str string) (dep *Dependency, err error) {
 			if err != nil {
 				return
 			}
+		} else {
+			con.Operator = Equal
 		}
 		con.Version, err = ParseVersion(opVersion[2])
 		if err != nil {

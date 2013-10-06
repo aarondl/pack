@@ -5,7 +5,7 @@ import (
 	. "testing"
 )
 
-func TestParse(t *T) {
+func TestVersion_Parse(t *T) {
 	t.Parallel()
 	var tests = []struct {
 		Input  string
@@ -55,7 +55,7 @@ func TestParse(t *T) {
 	}
 }
 
-func TestSatisfies(t *T) {
+func TestVersion_Satisfies(t *T) {
 	t.Parallel()
 	var tests = []struct {
 		Base      string
@@ -237,6 +237,30 @@ func TestCompareStrings(t *T) {
 		if res != test.Result {
 			t.Error(test, "expected:", res, "to be equal to:", test.Result)
 		}
+	}
+}
+
+func TestVersion_Zero(t *T) {
+	v := Version{0, 0, 0, ``}
+	if !v.Zero() {
+		t.Error("Should be zero.")
+	}
+	v.Release = `release`
+	if !v.Zero() {
+		t.Error("Should be zero.")
+	}
+
+	v = Version{1, 0, 0, ``}
+	if v.Zero() {
+		t.Error("Should not be 0.")
+	}
+	v = Version{0, 1, 0, ``}
+	if v.Zero() {
+		t.Error("Should not be 0.")
+	}
+	v = Version{0, 0, 1, ``}
+	if v.Zero() {
+		t.Error("Should not be 0.")
 	}
 }
 

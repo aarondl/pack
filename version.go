@@ -257,6 +257,11 @@ func compareStrings(lhs, rhs string) int {
 	return 0
 }
 
+// Zero checks to see if this is a completely zero'd Version.
+func (v *Version) Zero() bool {
+	return v.Major == 0 && v.Minor == 0 && v.Patch == 0
+}
+
 // String changes the version into a string representation.
 func (v Version) String() string {
 	var release string
