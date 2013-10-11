@@ -17,59 +17,59 @@ var (
 
 // Author is metadata about an author.
 type Author struct {
-	Name     string
-	Email    string
-	Homepage string
+	Name     string   `yaml:",omitempty"`
+	Emails   []string `yaml:",omitempty"`
+	Homepage string   `yaml:",omitempty"`
 }
 
 // Support contains the locations at which to find support for the package.
 type Support struct {
-	Website string
-	Email   string
-	Forum   string
-	Wiki    string
-	Issues  string
+	Website string `yaml:",omitempty"`
+	Email   string `yaml:",omitempty"`
+	Forum   string `yaml:",omitempty"`
+	Wiki    string `yaml:",omitempty"`
+	Issues  string `yaml:",omitempty"`
 }
 
 // Repository is a version control repository endpoint.
 type Repository struct {
 	// Type can be one of: git/mercurial/bazaar
-	Type string
-	URL  string
+	Type string `yaml:",omitempty"`
+	URL  string `yaml:",omitempty"`
 }
 
 // Pack is the metadata of a package.
 type Pack struct {
 	// Display name for the package, ImportPath's trailing name if not provided.
-	Name string
+	Name string `yaml:",omitempty"`
 	// The import path of the package.
-	ImportPath string
+	ImportPath string `yaml:",omitempty"`
 	// Version
-	Version *Version
+	Version *Version `yaml:",omitempty"`
 	// Short description of the package.
-	Summary string
+	Summary string `yaml:",omitempty"`
 	// Longer description of the package.
-	Description string
+	Description string `yaml:",omitempty"`
 	// Homepage
-	Homepage string
+	Homepage string `yaml:",omitempty"`
 	// Repository
-	Repository Repository
+	Repository *Repository `yaml:",omitempty"`
 	// License type ie. MIT, LGPL-3.0+, GPL-3.0+, Apache-2.0
-	License string
+	License string `yaml:",omitempty"`
 	// Authors
-	Authors []*Author
+	Authors []*Author `yaml:",omitempty"`
 	// Contributors
-	Contributors []*Author
+	Contributors []*Author `yaml:",omitempty"`
 	// Support
-	Support Support
+	Support *Support `yaml:",omitempty"`
 	// Dependencies of the package.
-	Dependencies []*Dependency
+	Dependencies []*Dependency `yaml:",omitempty"`
 	// Environments of the package.
-	Environments map[string][]*Dependency
+	Environments map[string][]*Dependency `yaml:",omitempty"`
 	// Subpackages are used to mark packages that should be tagged with this
 	// same metadata. They must be subdirectories. This is useful for
 	// having subpackages within the same vcs repository.
-	Subpackages []string
+	Subpackages []string `yaml:",omitempty"`
 }
 
 // ParsePack reads yaml from a reader and parses it into a pack object.
