@@ -56,16 +56,12 @@ func copyFileTo(zipped io.ReadCloser, filepath string) error {
 	return nil
 }
 
-func TestGit(t *T) {
-	if Short() {
-		t.SkipNow()
-	}
-
+func testDvcsHelper(t *T, zipfile string, dvcs DVCS) {
 	var err error
 	tmpDir := os.TempDir()
 	gopackTestDir := filepath.Join(tmpDir, "gopacktest")
-	gitOrigin := filepath.Join(gopackTestDir, "gitOrigin")
-	gitClone := filepath.Join(gopackTestDir, "gitClone")
+	dvcsOrigin := filepath.Join(gopackTestDir, "dvcsOrigin")
+	dvcsClone := filepath.Join(gopackTestDir, "dvcsClone")
 	var deleteTestDir = func() {
 		err = os.RemoveAll(gopackTestDir)
 		if err != nil && !os.IsNotExist(err) {
@@ -74,37 +70,53 @@ func TestGit(t *T) {
 	}
 
 	deleteTestDir()
-	if err = os.MkdirAll(gitOrigin, 0770); err != nil {
+	if err = os.MkdirAll(dvcsOrigin, 0770); err != nil {
 		t.Fatal("Could not create directory:", err)
 	}
 	defer deleteTestDir()
 
-	if err = unzipArchive("testgit.zip", gitOrigin); err != nil {
-		t.Fatal("Failed to unzip git archive:", err)
+	if err = unzipArchive(zipfile, dvcsOrigin); err != nil {
+		t.Fatal("Failed to unzip dvcs archive:", err)
 	}
 
-	var git = DVCS{gitOrigin, Git{}}
 	var tags []string
-	if tags, err = git.Tags(); err != nil {
+	dvcs.SetRepoPath(dvcsOrigin)
+	if err = dvcs.Status(); err != nil {
+		t.Fatal("Status should not error if it is a repo:", err)
+	}
+	if tags, err = dvcs.Tags(); err != nil {
 		t.Fatal("Failed to retrieve tags:", err)
 	} else if len(tags) != 2 {
 		t.Error("Expected 2 tags, got:", len(tags), tags)
 	}
 	for _, tag := range tags {
-		if err = git.Checkout(tag); err != nil {
+		if err = dvcs.Checkout(tag); err != nil {
 			t.Error("Failed to checkout tag:", err)
 		}
+		if ctag, err := dvcs.CurrentTag(); err != nil {
+			t.Error("Failed to retrieve current tag:", err)
+		} else if ctag != tag {
+			t.Errorf("Expected tag: %s, got: %s", tag, ctag)
+		}
 	}
-	git.Repository = gitClone
-	if err = git.Clone(gitOrigin); err != nil {
+	dvcs.SetRepoPath(dvcsClone)
+	if err = dvcs.Clone(dvcsOrigin); err != nil {
 		t.Error("Failed to clone repository:", err)
 	}
-	if err = git.Clone(gitOrigin); err != nil {
+	if err = dvcs.Clone(dvcsOrigin); err != nil {
 		t.Error("Expected no error on useless clone but got:", err)
 	}
-	if err = git.Update(); err != nil {
+	if err = dvcs.Update(); err != nil {
 		t.Error("Failed to update repository:", err)
 	}
+}
+
+func TestGit(t *T) {
+	if Short() {
+		t.SkipNow()
+	}
+
+	testDvcsHelper(t, "testgit.zip", &Git{})
 }
 
 func TestHg(t *T) {
@@ -112,50 +124,7 @@ func TestHg(t *T) {
 		t.SkipNow()
 	}
 
-	var err error
-	tmpDir := os.TempDir()
-	gopackTestDir := filepath.Join(tmpDir, "gopacktest")
-	hgOrigin := filepath.Join(gopackTestDir, "hgOrigin")
-	hgClone := filepath.Join(gopackTestDir, "hgClone")
-	var deleteTestDir = func() {
-		err = os.RemoveAll(gopackTestDir)
-		if err != nil && !os.IsNotExist(err) {
-			t.Fatal("Error removing temporary dir:", err)
-		}
-	}
-
-	deleteTestDir()
-	if err = os.MkdirAll(hgOrigin, 0770); err != nil {
-		t.Fatal("Could not create directory:", err)
-	}
-	defer deleteTestDir()
-
-	if err = unzipArchive("testhg.zip", hgOrigin); err != nil {
-		t.Fatal("Failed to unzip hg archive:", err)
-	}
-
-	var hg = DVCS{hgOrigin, Hg{}}
-	var tags []string
-	if tags, err = hg.Tags(); err != nil {
-		t.Fatal("Failed to retrieve tags:", err)
-	} else if len(tags) != 2 {
-		t.Error("Expected 2 tags, got:", len(tags), tags)
-	}
-	for _, tag := range tags {
-		if err = hg.Checkout(tag); err != nil {
-			t.Error("Failed to checkout tag:", err)
-		}
-	}
-	hg.Repository = hgClone
-	if err = hg.Clone(hgOrigin); err != nil {
-		t.Error("Failed to clone repository:", err)
-	}
-	if err = hg.Clone(hgOrigin); err != nil {
-		t.Error("Expected no error on useless clone but got:", err)
-	}
-	if err = hg.Update(); err != nil {
-		t.Error("Failed to update repository:", err)
-	}
+	testDvcsHelper(t, "testhg.zip", &Hg{})
 }
 
 func TestBzr(t *T) {
@@ -167,77 +136,5 @@ func TestBzr(t *T) {
 		t.SkipNow()
 	}
 
-	var err error
-	tmpDir := os.TempDir()
-	gopackTestDir := filepath.Join(tmpDir, "gopacktest")
-	bzrOrigin := filepath.Join(gopackTestDir, "bzrOrigin")
-	bzrClone := filepath.Join(gopackTestDir, "bzrClone")
-	var deleteTestDir = func() {
-		err = os.RemoveAll(gopackTestDir)
-		if err != nil && !os.IsNotExist(err) {
-			t.Fatal("Error removing temporary dir:", err)
-		}
-	}
-
-	deleteTestDir()
-	if err = os.MkdirAll(bzrOrigin, 0770); err != nil {
-		t.Fatal("Could not create directory:", err)
-	}
-	defer deleteTestDir()
-
-	if err = unzipArchive("testbzr.zip", bzrOrigin); err != nil {
-		t.Fatal("Failed to unzip bzr archive:", err)
-	}
-
-	var bzr = DVCS{bzrOrigin, Bzr{}}
-	var tags []string
-	if tags, err = bzr.Tags(); err != nil {
-		t.Fatal("Failed to retrieve tags:", err)
-	} else if len(tags) != 2 {
-		t.Error("Expected 2 tags, got:", len(tags), tags)
-	}
-	for _, tag := range tags {
-		if err = bzr.Checkout(tag); err != nil {
-			t.Error("Failed to checkout tag:", err)
-		}
-	}
-	bzr.Repository = bzrClone
-	if err = bzr.Clone(bzrOrigin); err != nil {
-		t.Error("Failed to clone repository:", err)
-	}
-	if err = bzr.Clone(bzrOrigin); err != nil {
-		t.Error("Expected no error on useless clone but got:", err)
-	}
-	if err = bzr.Update(); err != nil {
-		t.Error("Failed to update repository:", err)
-	}
-}
-
-func TestDVCS_UriParse(t *T) {
-	t.Parallel()
-	uri, err := tryUriParse(`/path/to/file`)
-	if uri != nil {
-		t.Error("Expected nil url on file path, got:", uri)
-	}
-
-	uri, err = tryUriParse(`git://github.com/aarondl/pack`)
-	if err != nil {
-		t.Error("Expected no error, got:", err)
-	}
-	if uri == nil {
-		t.Error("Uri should not be nil.")
-	}
-
-	uri, err = tryUriParse(`ssh+git://github.com/aarondl/pack`)
-	if err != nil {
-		t.Error("Expected no error, got:", err)
-	}
-	if uri == nil {
-		t.Error("Uri should not be nil.")
-	}
-
-	uri, err = tryUriParse(`bad/path`)
-	if err == nil {
-		t.Error("Expected error, but it was nil.")
-	}
+	testDvcsHelper(t, "testbzr.zip", &Bzr{})
 }
