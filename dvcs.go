@@ -392,10 +392,9 @@ func DirExists(dir string) (bool, error) {
 	f, err := os.Stat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil
-		} else {
-			return false, err
+			err = nil
 		}
+		return false, err
 	}
 	if !f.IsDir() {
 		return false, fmt.Errorf("Expected %s to be dir, but found file.", dir)

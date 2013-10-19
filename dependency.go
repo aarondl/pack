@@ -2,32 +2,31 @@ package pack
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 )
 
 const (
-	errFmtDep = `pack: [%v] invalid name, must start with alphabetic ` +
-		`and can only have the following characters: a-z0-9, -, _`
+	errFmtName = `pack: [%v] must be in the form: ` +
+		`importpath [constraints]* [url]?`
 	errFmtConstraint = `pack: [%v] constraints must have the form: ` +
-		`[url] (=|!=|>|<|>=|<=|~)version*`
+		`(=|!=|>|<|>=|<=|~)version`
+	errFmtUrl = `pack: [%v] urls must have the form: (git|hg|bzr)(:url)?`
 )
 
 var (
-	rgxDepName = regexp.MustCompile(`(?i)^([a-z][a-z0-9_\-]+)$`)
-	rgxDepUrl  = regexp.MustCompile(
-		`^(git|bzr|hg):([a-z0-9\?\-_@\.:/=%&]+)$`)
+	rgxDepUrl = regexp.MustCompile(
+		`(?i)^(git|bzr|hg)(?::([a-z0-9\?\-_@\.:/=%&]+))?$`)
 	rgxConstraint = regexp.MustCompile(
-		`(?i)^(=|!=|>|<|>=|<=|~)?([a-z0-9\.-]+)$`)
+		`(?i)^(=|!=|>|<|>=|<=|~)?([0-9]\.[0-9]+\.[0-9]+(?:-[a-z0-9\-\.]+)?)$`)
 )
 
 // Dependency is a package dependency.
 type Dependency struct {
 	Name        string
-	URL         string
 	Constraints []*Constraint
+	URL         string
 }
 
 // Constraint is a constraint on a dependency.
@@ -37,58 +36,67 @@ type Constraint struct {
 }
 
 // ParseDependency parses a string into a Dependency.
-func ParseDependency(str string) (dep *Dependency, err error) {
-	if len(str) == 0 {
-		err = errors.New(errMsgEmpty)
-		return
-	}
+func ParseDependency(str string) (*Dependency, error) {
+	var dep *Dependency
+	var n, i int
+	var err error
 
-	parts := strings.Split(str, " ")
-	if !rgxDepName.MatchString(parts[0]) {
-		err = fmt.Errorf(errFmtDep, str)
-		return
+	var parts = strings.Split(str, " ")
+	if len(str) == 0 || len(parts[0]) == 0 {
+		return nil, fmt.Errorf(errFmtName, str)
 	}
 
 	dep = new(Dependency)
 	dep.Name = parts[0]
-	if len(parts) == 1 {
-		return
-	}
-
 	parts = parts[1:]
-	if rgxDepUrl.MatchString(parts[0]) {
-		dep.URL = parts[0]
-		parts = parts[1:]
-		if len(parts) == 0 {
-			return
-		}
+	if n = len(parts); n == 0 {
+		return dep, nil
 	}
 
-	n := len(parts)
-	dep.Constraints = make([]*Constraint, n)
-	for i := 0; i < n; i++ {
+	for i = 0; i < n; i++ {
 		opVersion := rgxConstraint.FindStringSubmatch(parts[i])
 		if opVersion == nil {
-			err = fmt.Errorf(errFmtConstraint, parts[i])
-			return
+			if i+1 == n {
+				if dep.Constraints != nil {
+					dep.Constraints = dep.Constraints[:n-1]
+				}
+				break // Give a chance for url parsing too.
+			}
+			return nil, fmt.Errorf(errFmtConstraint, parts[i])
 		}
 
+		if dep.Constraints == nil {
+			dep.Constraints = make([]*Constraint, n)
+		}
 		dep.Constraints[i] = new(Constraint)
 		con := dep.Constraints[i]
 		if len(opVersion[1]) > 0 {
 			con.Operator, err = ParseOp(opVersion[1])
 			if err != nil {
-				return
+				return nil, err
 			}
 		} else {
 			con.Operator = Equal
 		}
 		con.Version, err = ParseVersion(opVersion[2])
 		if err != nil {
-			return
+			panic(str + " -- " + parts[i] + " -- " + opVersion[0])
+			return nil, err
 		}
 	}
-	return
+
+	parts = parts[i:]
+	if len(parts) == 0 {
+		return dep, nil
+	}
+
+	if rgxDepUrl.MatchString(parts[0]) {
+		dep.URL = parts[0]
+	} else {
+		return nil, fmt.Errorf(errFmtUrl, parts[0])
+	}
+
+	return dep, nil
 }
 
 // String turns a Dependency into a String.
@@ -99,14 +107,14 @@ func (d *Dependency) String() (str string) {
 	}
 
 	buf.WriteString(d.Name)
-	if len(d.URL) > 0 {
-		buf.WriteByte(' ')
-		buf.WriteString(d.URL)
-	}
 	for _, con := range d.Constraints {
 		buf.WriteByte(' ')
 		buf.WriteString(con.Operator.String())
 		buf.WriteString(con.Version.String())
+	}
+	if len(d.URL) > 0 {
+		buf.WriteByte(' ')
+		buf.WriteString(d.URL)
 	}
 	str = buf.String()
 	return

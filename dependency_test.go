@@ -45,6 +45,19 @@ func TestParseDependency(t *T) {
 		t.Errorf("Expected %v and %v to be equal.", v, version)
 	}
 
+	out, err = ParseDependency(`github.com/test/test git`)
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	if out.Name != "github.com/test/test" {
+		t.Error("Expected name to be name but got:", out.Name)
+	}
+
+	if out.URL != "git" {
+		t.Error("Expected the repo style but got:", out.URL)
+	}
+
 	out, err = ParseDependency(`name git:http://repo.com`)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
@@ -55,7 +68,7 @@ func TestParseDependency(t *T) {
 	}
 
 	if out.URL != "git:http://repo.com" {
-		t.Error("Expected the repo url but got: ", out.URL)
+		t.Error("Expected the repo url but got:", out.URL)
 	}
 }
 
@@ -63,22 +76,8 @@ func TestParseDependency_Errors(t *T) {
 	t.Parallel()
 
 	_, err := ParseDependency(``)
-	if !strings.Contains(err.Error(), `empty`) {
+	if !strings.Contains(err.Error(), `must be in the form`) {
 		t.Error("Expected empty error, got:", err)
-	}
-
-	_, err = ParseDependency(`1234 <3.2.5`)
-	if err == nil {
-		t.Error("Expected an error but got nothing.")
-	} else if exp := "name"; !strings.Contains(err.Error(), exp) {
-		t.Error("Expected an error matching:", exp, "but got:", err)
-	}
-
-	_, err = ParseDependency(`name ~=3.2.5`)
-	if err == nil {
-		t.Error("Expected an error but got nothing.")
-	} else if exp := "constraints"; !strings.Contains(err.Error(), exp) {
-		t.Error("Expected an error matching:", exp, "but got:", err)
 	}
 
 	_, err = ParseDependency(`name asdf`)
@@ -114,7 +113,7 @@ func TestDependency_String(t *T) {
 
 	dep.Name = "name"
 
-	if s, exp := dep.String(), `name hg:hg.io <1.2.3-pre ~3.2.1-dev`; s != exp {
+	if s, exp := dep.String(), `name <1.2.3-pre ~3.2.1-dev hg:hg.io`; s != exp {
 		t.Error("Expected:", exp, "got:", s)
 	}
 }
@@ -123,16 +122,16 @@ func TestDependency_GetYAML(t *T) {
 	t.Parallel()
 	d := Dependency{
 		"name",
-		"git:git+https://repo.com/?hi",
 		[]*Constraint{{
 			NotEqual,
 			&Version{1, 2, 3, `pre`},
 		}},
+		"git:git+https://repo.com/?hi",
 	}
 	_, value := d.GetYAML()
 	if s, ok := value.(string); !ok {
 		t.Error("It should return a string type.")
-	} else if s != "name git:git+https://repo.com/?hi !=1.2.3-pre" {
+	} else if s != "name !=1.2.3-pre git:git+https://repo.com/?hi" {
 		t.Error("It's not returning the correct string.")
 	}
 }
@@ -140,13 +139,10 @@ func TestDependency_GetYAML(t *T) {
 func TestDependency_SetYAML(t *T) {
 	t.Parallel()
 	var d Dependency
-	if d.SetYAML("", "1234fail") {
-		t.Error("Expecting failure.")
-	}
 	if d.SetYAML("", 10) {
 		t.Error("Expecting failure.")
 	}
-	success := d.SetYAML("", "name git:git.com >=1.2.3-pre")
+	success := d.SetYAML("", "name >=1.2.3-pre git:git.com")
 	if !success {
 		t.Error("Expecting success.")
 	}
