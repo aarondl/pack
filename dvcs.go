@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"regexp"
 )
@@ -385,19 +384,4 @@ func (b *Bzr) CurrentTag() (string, error) {
 	}
 
 	return "", fmt.Errorf("Not implemented yet!")
-}
-
-// DirExists checks to see if a directory exists.
-func DirExists(dir string) (bool, error) {
-	f, err := os.Stat(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = nil
-		}
-		return false, err
-	}
-	if !f.IsDir() {
-		return false, fmt.Errorf("Expected %s to be dir, but found file.", dir)
-	}
-	return true, nil
 }
