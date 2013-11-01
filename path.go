@@ -12,22 +12,20 @@ const (
 	GOPATH       = "GOPATH"
 	GOPACKFOLDER = "gopack"
 	SRCFOLDER    = "src"
-	CONFIGFILE   = "config.yaml"
 )
 
 var (
-	errGoPathNotSet  = errors.New("GOPATH must be set to use this tool.")
+	errGoPathNotSet = errors.New("GOPATH must be set to use this tool.")
 )
 
 // Paths contains all the paths used by gopack.
 type Paths struct {
-	Gopath           string
-	Gopaths          []string
-	GopackPath       string
-	GopacksetPath    string
-	CombinedPath     string
-	GopackConfigPath string
-	packset          string
+	Gopath        string
+	Gopaths       []string
+	GopackPath    string
+	GopacksetPath string
+	CombinedPath  string
+	packset       string
 }
 
 // NewPaths uses the environment to locate all the paths to be used and returns
@@ -37,9 +35,8 @@ func NewPaths(gopath, packset string) (*Paths, error) {
 		return nil, errGoPathNotSet
 	}
 	p := &Paths{Gopath: gopath}
-	p.Gopaths = filepath.SplitList(gopath)
+	p.Gopaths = splitAndCullPath(gopath)
 	p.GopackPath = filepath.Join(p.Gopaths[0], GOPACKFOLDER)
-	p.GopackConfigPath = filepath.Join(p.GopackPath, CONFIGFILE)
 	p.packset = packset
 	p.GopacksetPath = filepath.Join(p.GopackPath, p.packset, SRCFOLDER)
 	p.CombinedPath = p.Gopath + string(filepath.ListSeparator) + p.GopacksetPath
@@ -74,7 +71,7 @@ func (p *Paths) GopathSet() {
 }
 
 // PackageExists checks a packages existence. If it exists it will return
-// a path, a boolean indicating whether or not it was found in the GOPACKSETPATH
+// a path, the boolean indicates if it was in the GOPACKPATH.
 func (p *Paths) PackageExists(imp string) (string, bool, error) {
 	for _, gopath := range p.Gopaths {
 		packagepath := filepath.Join(gopath, SRCFOLDER, imp)
@@ -91,7 +88,6 @@ func (p *Paths) PackageExists(imp string) (string, bool, error) {
 	if err != nil {
 		return "", false, err
 	} else if exist {
-		panic("LOL")
 		return packagepath, true, nil
 	}
 
@@ -129,6 +125,21 @@ func DirExists(dir string) (bool, error) {
 	return true, nil
 }
 
+// FileExists checks to see if a directory exists.
+func FileExists(file string) (bool, error) {
+	f, err := os.Stat(file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
+		return false, err
+	}
+	if f.IsDir() {
+		return false, fmt.Errorf("Expected %s to be file, but found dir.", file)
+	}
+	return true, nil
+}
+
 // TryUriParse tries to parse the given string into a uri.
 func TryUriParse(pathOrUrl string) (*url.URL, error) {
 	if filepath.IsAbs(pathOrUrl) {
@@ -143,4 +154,21 @@ func TryUriParse(pathOrUrl string) (*url.URL, error) {
 			pathOrUrl)
 	}
 	return url, nil
+}
+
+// splitAndCullPath will divide a pathlist into it's parts, removing all
+// empty entries.
+func splitAndCullPath(pathlist string) []string {
+	list := filepath.SplitList(pathlist)
+	for i := 0; i < len(list); {
+		if len(list[i]) == 0 {
+			for j := i; j < len(list)-1; j++ {
+				list[j] = list[j+1]
+			}
+			list = list[:len(list)-1]
+		} else {
+			i++
+		}
+	}
+	return list
 }
